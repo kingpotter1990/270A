@@ -975,7 +975,7 @@ public:
         delta_V = V*XYZ;
          
 	}
-	
+
     void Delta_R(const MATRIX_3X3<T>& delta_F, MATRIX_3X3<T>& delta_R)const{
         
         MATRIX_3X3<T> U, V, Sigma(0), R, S, Other1, Other2;
@@ -997,14 +997,16 @@ public:
         Other2(2,0) = -S(0,2);
         Other2(2,1) = -S(0,1);
         Other2(2,2) = S(2,2) + S(1,1);
-        VECTOR_3D<T> XYZ = Other2.Invert()*VECTOR_3D<T>(Other1(0,1) - Other1(1,0), Other1(0,2) - Other1(2,0), Other1(1,2) - Other1(2,1));
+
+		Other2.Invert();
+        VECTOR_3D<T> XYZ = Other2*VECTOR_3D<T>(Other1(0,1) - Other1(1,0), Other1(0,2) - Other1(2,0), Other1(1,2) - Other1(2,1));
         T x,y,z;
         x = XYZ.x(); y = XYZ.y(); z = XYZ.z();
         
-        return R*MATRIX_3X3<T>(0,-x,-y,x,0,-z,y,z,0);
+        delta_R =  R*MATRIX_3X3<T>(0,-x,-y,x,0,-z,y,z,0);
     
     }
-    
+
 	void Invert(){
 		T cofactor11=x[4]*x[8]-x[7]*x[5],cofactor12=x[7]*x[2]-x[1]*x[8],cofactor13=x[1]*x[5]-x[4]*x[2];
 		T determinant=x[0]*cofactor11+x[3]*cofactor12+x[6]*cofactor13;assert(determinant!=0);T s=1/determinant;

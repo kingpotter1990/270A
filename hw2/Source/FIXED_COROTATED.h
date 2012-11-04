@@ -33,6 +33,7 @@ public:
 	}
 	
 	MATRIX_3X3<T> dP(const MATRIX_3X3<T>& F, const MATRIX_3X3<T>& dF){
+
 		MATRIX_3X3<T> delta_JF_IT, F_IT, F_I,delta_R;
         delta_JF_IT(0,0) = dF(1,1)*F(2,2) + F(1,1)*dF(2,2) - (dF(1,2)*F(2,1) + F(1,2)*dF(2,1));
         delta_JF_IT(0,1) = dF(1,2)*F(2,0) + F(1,2)*dF(2,0) - (dF(1,0)*F(2,1) + F(1,0)*dF(2,1));
@@ -57,7 +58,30 @@ public:
 	}
 	
 	void Element_Stifness_Matrix(const int element,const MATRIX_3X3<T>& Dm_Inverse,MATRIX_MXN<T>& element_stiffness){
-        
+        MATRIX_3X3<T> M=Dm_Inverse*Dm_Inverse.Transposed();
+		
+		T entry_ab;
+		T jacobian_determinant=(T)1/Dm_Inverse.Determinant();
+		
+		for(int a=0;a<4;a++){
+			VECTOR_3D<T> grad_Na=HYPERELASTICITY_CONSTITUTIVE_MODEL_3D<T>::Natural_Interpolating_Function_Gradient(a);
+			for(int b=0;b<4;b++){
+				VECTOR_3D<T> grad_Nb=HYPERELASTICITY_CONSTITUTIVE_MODEL_3D<T>::Natural_Interpolating_Function_Gradient(b);
+				VECTOR_3D<T> image=M*grad_Nb;
+				entry_ab=-(mu/(T)6)*jacobian_determinant*VECTOR_3D<T>::Dot_Product(grad_Na,image);
+				MATRIX_3X3<T> diag=entry_ab*MATRIX_3X3<T>::Identity();
+				for(int i=0;i<3;i++){
+					for(int j=0;j<3;j++){
+						element_stiffness(HYPERELASTICITY_CONSTITUTIVE_MODEL_3D<T>::Index(a,i),HYPERELASTICITY_CONSTITUTIVE_MODEL_3D<T>::Index(b,j))=diag(i,j);}}}}
+	
+		for(int a=0;a<4;a++){
+			VECTOR_3D<T> grad_Na=Dm_Inverse.Transposed()*HYPERELASTICITY_CONSTITUTIVE_MODEL_3D<T>::Natural_Interpolating_Function_Gradient(a);
+			for(int i=0;i<3;i++){
+				for(int b=0;b<4;b++){
+					VECTOR_3D<T> grad_Nb=Dm_Inverse.Transposed()*HYPERELASTICITY_CONSTITUTIVE_MODEL_3D<T>::Natural_Interpolating_Function_Gradient(b);
+					for(int j=0;j<3;j++){
+						element_stiffness(HYPERELASTICITY_CONSTITUTIVE_MODEL_3D<T>::Index(a,i),HYPERELASTICITY_CONSTITUTIVE_MODEL_3D<T>::Index(b,j))-=((mu+lambda)*jacobian_determinant/(T)6)*grad_Na(i)*grad_Nb(j);}}}}
+		}
 	}
 
 }

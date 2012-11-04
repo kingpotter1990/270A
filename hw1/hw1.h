@@ -1,0 +1,407 @@
+void SVD(MATRIX_2X2<T>& U,VECTOR_2D<T>& sigma,MATRIX_2X2<T>& V,const T tol=(T)1e-10)const{
+        T c, s, tor;
+        MATRIX_2X2<T> A = (Transposed()*(*this));
+        if(fabs(A.a21) < tol)
+        {
+            c = 1; s = 0;
+        }
+        else{
+            tor = (A.a11 - A.a22)/(2*A.a21);
+            T t1 = tor + sqrt(tor*tor + 1);
+            T t2 = tor - sqrt(tor*tor + 1);
+            T t = fabs(t1) < fabs(t2) ? t1:t2;
+            c = 1/sqrt(1+t*t);
+            s = t*c;
+        } 
+    
+        V.a11 = c; 
+		V.a12 = s; 
+		V.a21 = -s; 
+		V.a22 = c;
+            
+        //sort Sigma by magnitude of sigular value
+        
+        MATRIX_2X2 S2 = V.Transposed()*A;
+        S2 = S2*V;
+        T s1, s2;
+        s1 = S2.a11; s2 = S2.a22;
+        if(fabs(s1) < fabs(s2))
+        {//swap column
+            V = MATRIX_2X2<T>(-V.a12,-V.a22, V.a11, V.a21);
+        }
+        
+        MATRIX_2X2<T> Q_R = (*this)*V;
+        MATRIX_2X2<T> M_sigma;
+    
+        Q_R.QR(U, M_sigma, tol);
+        
+ 
+        sigma = VECTOR_2D<T>(M_sigma.a11, M_sigma.a22);
+        
+        if(sigma.x() < 0)
+        { 
+            sigma = -1*sigma;
+            U = -1*U;
+        }
+      
+    
+	}
+
+void Delta_Sigma(const MATRIX_2X2<T>& delta_F, VECTOR_2D<T>& delta_sigma)const{
+		//You need to implement this function.
+        
+        MATRIX_2X2<T> U,M,V;
+        VECTOR_2D<T> Sigma;
+        SVD(U, Sigma, V);
+        M = delta_F*U.Transpose()*V;
+        delta_sigma = VECTOR_2D<T>(M.a11,M.a22);
+        
+	}
+	
+	void Delta_SVD(const MATRIX_2X2<T>& delta_F,VECTOR_2D<T>& delta_sigma,MATRIX_2X2<T>& delta_U,MATRIX_2X2<T>& delta_V)const{
+		//You need to implement this function.
+        
+        MATRIX_2X2<T> A,U,V,S;
+        VECTOR_2D<T> Sigma;
+        SVD(U, Sigma, V);
+        if(fabs(fabs(Sigma.x()) - fabs(Sigma.y())) < 1e-5)
+            return;//not solvable
+        
+        A = U.Transpose()*delta_F*V;
+        delta_sigma = VECTOR_2D<T>(A.a11,A.a22);
+    
+        
+        S = MATRIX_2X2<T>(Sigma.y(),-Sigma.x(),-Sigma.x(),Sigma.y());
+        VECTOR_2D<T> ab, xy;
+        S.Invert();
+        ab = VECTOR_2D<T>(A.a21, A.a12);
+        xy = S*ab;
+        MATRIX_2X2<T> X(0, -xy.x(), xy.x(), 0), Y(0, -xy.y(), xy.y(),0);
+        delta_U = U*X;
+        delta_V = V*Y;
+        
+	}
+
+
+	static MATRIX_2X2<T> Givens_Rotation(const VECTOR_2D<T>& x,const T tol=(T)1e-10){
+		//This returns the matrix G=[c,-s;s,c] such that Gx=[X;0]
+		T denominator=x.Magnitude();
+		if(denominator>tol){
+			T c=x.x()/denominator;T s=-x.y()/denominator;
+			return MATRIX_2X2<T>(c,s,-s,c);}
+		else return MATRIX_2X2<T>((T)1,(T)0,(T)0,(T)1);
+	}
+	
+	static MATRIX_2X2<double> Outer_Product(const VECTOR_2D<T>& u,const VECTOR_2D<T>& v){return MATRIX_2X2(u.x_copy()*v.x_copy(),u.y_copy()*v.x_copy(),u.x_copy()*v.y_copy(),u.y_copy()*v.y_copy());}
+	static T Contract(const MATRIX_2X2<T>& A,const MATRIX_2X2<T>& B){return A.a11*B.a11+A.a21*B.a21+A.a12*B.a12+A.a22*B.a22;}
+	static MATRIX_2X2<double> Identity(){return MATRIX_2X2((T)1,(T)0,(T)0,(T)1);}
+	
+	void QR(MATRIX_2X2<T>&Q,MATRIX_2X2<T>&R, const T tol){
+        //QR
+        T c,s;
+        //G3
+        if(fabs(a21) < tol){
+            c = 1;s = 0;
+        }
+        else{
+            T alpha = 1/sqrt(a11*a11 + a21*a21);
+            s = -a21*alpha;
+            c = a11*alpha;
+        }
+        
+        Q.a11 = c;
+        Q.a21 = s;
+        Q.a12 = -s;
+        Q.a22 = c;
+        
+        R = Q*(*this);
+        Q = Q.Transposed();
+    }
+
+
+	
+	void SVD(MATRIX_3X3<T>& U,VECTOR_3D<T>& sigma,MATRIX_3X3<T>& V,const T tol=(T)1e-10,const int max_iterations=10)const {
+        //You need to implement this function.
+        T c, s;
+        V = MATRIX_3X3<T>(0);
+        MATRIX_2X2<T> A_12, A_23, A_13;
+        MATRIX_3X3<T> G_12, G_23, G_13;
+        MATRIX_3X3<T> A = Transposed()*(*this);
+        V(0,0) = 1;V(1,1) = 1;V(2,2) = 1;
+        for(int i = 0; i < max_iterations; i++)
+        {
+            A_12 = MATRIX_2X2<T>(A(0,0),A(1,0),A(0,1),A(1,1));
+            
+            if(fabs(A_12.a21)< tol)
+            {
+                c = 1; s = 0;
+            }
+            else{
+                T tal = (A_12.a11 - A_12.a22)/(2*A_12.a21);
+                T t1 = tal + sqrt(tal*tal + 1);
+                T t2 = tal - sqrt(tal*tal + 1);
+                T t = fabs(t1) < fabs(t2) ? t1:t2;
+                c = 1/sqrt(1+t*t);
+                s = t*c;
+            }
+            
+            G_12.x[0]= c; G_12.x[1] = -s; G_12.x[2] = 0;
+            G_12.x[3] = s;G_12.x[4] = c; G_12.x[5] = 0;
+            G_12.x[6] = 0;G_12.x[7] = 0; G_12.x[8] = 1;
+            
+            A = G_12.Transposed()*A*G_12;
+            V = V*G_12;
+            
+            A_23 = MATRIX_2X2<T>(A.x[4],A.x[5],A.x[7],A.x[8]);
+            
+            if(fabs(A_23.a21)< tol)
+            {
+                c = 1; s = 0;
+            }
+            else{
+                T tal = (A_23.a11 - A_23.a22)/(2*A_23.a21);
+                T t1 = tal + sqrt(tal*tal + 1);
+                T t2 = tal - sqrt(tal*tal + 1);
+                T t = fabs(t1) < fabs(t2) ? t1:t2;
+                c = 1/sqrt(1+t*t);
+                s = t*c;
+            }
+            
+            G_23.x[0]= 1; G_23.x[1] = 0; G_23.x[2] = 0;
+            G_23.x[3] = 0; G_23.x[4] = c; G_23.x[5] = -s;
+            G_23.x[6] = 0; G_23.x[7] = s; G_23.x[8] = c;
+            
+            A = G_23.Transposed()*A*G_23;
+            V = V*G_23;
+            
+            
+            A_13 = MATRIX_2X2<T>(A.x[0],A.x[2],A.x[6],A.x[8]);
+            
+            if(fabs(A_13.a21)< tol)
+            {
+                c = 1; s = 0;
+            }
+            else{
+                T tal = (A_13.a11 - A_13.a22)/(2*A_13.a21);
+                T t1 = tal + sqrt(tal*tal + 1);
+                T t2 = tal - sqrt(tal*tal + 1);
+                T t = fabs(t1) < fabs(t2) ? t1:t2;
+                c = 1/sqrt(1+t*t);
+                s = t*c;
+            }
+            
+            G_13.x[0]= c; G_13.x[1] = 0; G_13.x[2] = -s;
+            G_13.x[3] = 0;G_13.x[4] = 1; G_13.x[5] = 0;
+            G_13.x[6] = s;G_13.x[7] = 0; G_13.x[8] = c;
+            
+            A = G_13.Transposed()*A*G_13;
+            V = V*G_13;
+            
+        }//Jacobian Iteration to get V;
+        
+        MATRIX_3X3<T> SIGMA, SIGMA_2;
+        
+        //Sort Sigma by magnitude of sigular value
+        A = (MATRIX_3X3(x[0],x[3],x[6],x[1],x[4],x[7],x[2],x[5],x[8])*(*this));
+        SIGMA_2 = V.Transposed()*A*V;
+        if(SIGMA_2.x[8] > SIGMA_2.x[4]){
+            //swap column of V
+            VECTOR_3D<T> temp = V.Column(2);
+            V.x[6] = -V.x[3];
+            V.x[7] = -V.x[4];
+            V.x[8] = -V.x[5];
+            V.x[3] = temp.x();
+            V.x[4] = temp.y();
+            V.x[5] = temp.z();
+            
+            T temp_s = SIGMA_2.x[4];
+            SIGMA_2.x[4] = SIGMA_2.x[8];
+            SIGMA_2.x[8] = temp_s;
+        }//if s3 > s2, swap s3, s2, swap V's column 2 and 3
+        
+        //now s2 > s3 for sure
+        if(SIGMA_2.x[4] > SIGMA_2.x[0]){
+            VECTOR_3D<T> temp = V.Column(0);
+            V.x[0] = -V.x[3];
+            V.x[1] = -V.x[4];
+            V.x[2] = -V.x[5];
+            V.x[3] = temp.x();
+            V.x[4] = temp.y();
+            V.x[5] = temp.z();
+            
+            T temp_s = SIGMA_2.x[4];
+            SIGMA_2.x[4] = SIGMA_2.x[0];
+            SIGMA_2.x[0] = temp_s;
+        }//if s2 > s1, swap s2, s1, swap V's column 1 and 2
+        
+        //now s1 mut be biggest
+        //also make sure s2 > s3
+        if(SIGMA_2.x[8] > SIGMA_2.x[4]){
+            VECTOR_3D<T> temp = V.Column(2);
+            V.x[6] = -V.x[3];
+            V.x[7] = -V.x[4];
+            V.x[8] = -V.x[5];
+            V.x[3] = temp.x();
+            V.x[4] = temp.y();
+            V.x[5] = temp.z();
+            
+            T temp_s = SIGMA_2.x[4];
+            SIGMA_2.x[4] = SIGMA_2.x[8];
+            SIGMA_2.x[8] = temp_s;
+        }
+        
+        MATRIX_3X3<T> FV = (*this)*V;
+        FV.QR(U, SIGMA, tol);
+        
+        sigma = VECTOR_3D<T>(SIGMA.x[0], SIGMA.x[4],SIGMA.x[8]);
+        
+        //make sure that if there is negative singular value it is the last one
+        int N_negative=(sigma(0)<0)+(sigma(1)<0)+(sigma(2)<0);
+        if(N_negative==0) return;
+        if(N_negative==1){
+            if(sigma(0)<0){
+                sigma(0)=-sigma(0);
+                sigma(2)=-sigma(2);
+                for(int i=0;i<3;i++) V(i,0)=-V(i,0);
+                for(int i=0;i<3;i++) V(i,2)=-V(i,2);}
+            else if(sigma(1)<0){
+                sigma(1)=-sigma(1);
+                sigma(2)=-sigma(2);
+                for(int i=0;i<3;i++) V(i,1)=-V(i,1);
+                for(int i=0;i<3;i++) V(i,2)=-V(i,2);}}
+        if(N_negative==2){
+            if(sigma(0)>=0){
+                sigma(1)=-sigma(1);
+                sigma(2)=-sigma(2);
+                for(int i=0;i<3;i++) V(i,1)=-V(i,1);
+                for(int i=0;i<3;i++) V(i,2)=-V(i,2);}
+            else if(sigma(1)>=0){
+                sigma(0)=-sigma(0);
+                sigma(2)=-sigma(2);
+                for(int i=0;i<3;i++) V(i,0)=-V(i,0);
+                for(int i=0;i<3;i++) V(i,2)=-V(i,2);}
+            else if(sigma(2)>=0){
+                sigma(0)=-sigma(0);
+                sigma(1)=-sigma(1);
+                for(int i=0;i<3;i++) V(i,0)=-V(i,0);
+                for(int i=0;i<3;i++) V(i,1)=-V(i,1);}}
+        if(N_negative==3){
+            sigma(0)=-sigma(0);
+            sigma(1)=-sigma(1);
+            for(int i=0;i<3;i++) V(i,0)=-V(i,0);
+            for(int i=0;i<3;i++) V(i,1)=-V(i,1);}
+    }
+    
+    void QR(MATRIX_3X3<T>&Q,MATRIX_3X3<T>&R, const T tol){
+        T c, s;
+        MATRIX_3X3<T> G1(0), G2(0), G3(0);
+        //calc G1
+        if(fabs(x[2]) < tol){
+            c = 1;s = 0;
+            G1.x[0] = G1.x[4] = G1.x[8] = 1;
+        }
+        else{
+            T alpha = 1/sqrt(x[1]*x[1] + x[2]*x[2]);
+            s = -x[2]*alpha;
+            c = x[1]*alpha;
+            G1.x[0] = 1;
+            G1.x[4] = c;
+            G1.x[5] = s;
+            G1.x[7] = -s;
+            G1.x[8] = c;
+        }
+        
+        MATRIX_3X3<T> A1;
+        A1 = G1*(*this);
+        //calc G2
+        if(fabs(A1.x[1]) < tol){
+            c = 1;s = 0;
+            G2.x[0] = G2.x[4] = G2.x[8] = 1;
+        }
+        else{
+            T alpha = 1/sqrt(A1.x[0]*A1.x[0] + A1.x[1]*A1.x[1]);
+            s = -A1.x[1]*alpha;
+            c = A1.x[0]*alpha;
+            G2.x[8] = 1;
+            G2.x[0] = c;
+            G2.x[1] = s;
+            G2.x[3] = -s;
+            G2.x[4] = c;
+        }
+        
+        MATRIX_3X3<T> A2;
+        A2 = G2*A1;
+        //calc G3
+        if(fabs(A2.x[5]) < tol){
+            c = 1;s = 0;
+            G3.x[0] = G3.x[4] = G3.x[8] = 1;
+        }
+        else{
+            T alpha = 1/sqrt(A2.x[4]*A2.x[4] + A2.x[5]*A2.x[5]);
+            s = -A2.x[5]*alpha;
+            c = A2.x[4]*alpha;
+            G3.x[0] = 1;
+            G3.x[4] = c;
+            G3.x[5] = s;
+            G3.x[7] = -s;
+            G3.x[8] = c;
+        }
+        
+        Q = (G3*G2*G1).Transposed();
+        R = Q.Transposed()*(*this);
+        
+	}
+
+	
+	void Delta_Sigma(const MATRIX_3X3<T>& delta_F, VECTOR_3D<T>& delta_sigma)const{
+		//You need to implement this function.
+        MATRIX_3X3<T> A, U,V;
+        VECTOR_3D<T> Sigma;
+        SVD(U, Sigma, V);
+        A = U.Transpose()*delta_F*V;
+        delta_sigma = VECTOR_3D<T>(A.x[0],A.x[4],A.x[8]);
+        
+        
+	}
+	
+	void Delta_SVD(const MATRIX_3X3<T>& delta_F,VECTOR_3D<T>& delta_sigma,MATRIX_3X3<T>& delta_U,MATRIX_3X3<T>& delta_V)const{
+		
+        //You need to implement this function.
+        MATRIX_3X3<T> A, U, V;
+        VECTOR_3D<T> Sigma;
+        SVD(U, Sigma, V);
+        T tol = 1e-15;
+        if(fabs(fabs(Sigma.x()) - fabs(Sigma.y()))<tol||
+           fabs(fabs(Sigma.x()) - fabs(Sigma.z()))<tol||
+           fabs(fabs(Sigma.z()) - fabs(Sigma.y()))<tol)
+        {   return; }
+        
+        A = U.Transposed()*delta_F*V;
+        delta_sigma = VECTOR_3D<T>(A.x[0],A.x[4],A.x[8]);
+        
+        T s1,s2,s3,a,b,c,d,e,f,x,y,z,p,q,r;
+        s1 = Sigma.x(); s2 = Sigma.y(); s3 = Sigma.z();
+        
+        a = A.x[3]; b = A.x[6]; c = A.x[7];
+        d = A.x[1]; e = A.x[2]; f = A.x[5];
+        
+        MATRIX_2X2<T> Sigma_xp(-s1,s2,s2,-s1), Sigma_yq(-s1,s3,s3,-s1), Sigma_zr(-s2,s3,s3,-s2);
+        VECTOR_2D<T> xp, yq, zr;
+        Sigma_xp.Invert();
+        xp = Sigma_xp*VECTOR_2D<T>(a,d);
+        x = xp.x(); p = xp.y();
+        Sigma_yq.Invert();
+        yq = Sigma_yq*VECTOR_2D<T>(b,e);
+        y = yq.x(); q = yq.y();
+        Sigma_zr.Invert();
+        zr = Sigma_zr*VECTOR_2D<T>(c,f);
+        z = zr.x(); r = zr.y();
+        
+        MATRIX_3X3 XYZ(0), PQR(0);
+        XYZ.x[1] = -x; XYZ.x[2] = -y; XYZ.x[3] = x; XYZ.x[5] = -z; XYZ.x[6] = y; XYZ.x[7] = z;
+        PQR.x[1] = -p; PQR.x[2] = -q; PQR.x[3] = p; PQR.x[5] = -r; PQR.x[6] = q; PQR.x[7] = r;
+        
+        delta_U = U*PQR;
+        delta_V = V*XYZ;
+         
+	}

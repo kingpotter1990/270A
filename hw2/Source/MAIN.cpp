@@ -250,7 +250,7 @@ int main(int argc, char **argv)
 	
 	//set up physics
 	//elastic constitutive model
-	FIXED_COROTATED_3D<double> fc((float)10000,(float).3);
+	FIXED_COROTATED_3D<double> fc((float)50000,(float).3);
 	FEM_HYPERELASTICITY_3D<double> fem(deformable_object.Tetrahedron_Mesh(),deformable_object.Positions());
 	fem.Set_Constitutive_Model(fc);
 	fem.Initialize_Undeformed_Configuration();

@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <GL/glut.h> 
 #include "ALGEBRA.h"
 #include "GEOMETRY.h"
@@ -321,7 +322,7 @@ int main(int argc, char **argv)
     
     // ELASTIC CONSTITUTIVE MODEL
     // LINEAR_ELASTICITY_3D<T> le((float)10000,(float).3);
-    FIXED_COROTATED_3D<T> le((float)10000,(float).3);
+    FIXED_COROTATED_3D<T> le((float)50000,(float).3);
 
     FEM_HYPERELASTICITY_3D<T> fem(deformable_object.Tetrahedron_Mesh(),deformable_object.Positions());
     fem.Set_Constitutive_Model(le);
